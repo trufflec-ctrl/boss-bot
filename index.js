@@ -13,8 +13,6 @@ const client = new Client({
 
 /**
  * BOSS DATABASE
- * group: Used for categorization
- * thumbnail: Small image in top right
  */
 const bosses = {
     world_boss: { 
@@ -55,7 +53,7 @@ async function checkAlerts() {
             if (!b.isFixed && b.status === "DEAD" && b.next && !b.alerted) {
                 const diffInMinutes = b.next.diff(now, 'minute');
                 if (diffInMinutes <= 15 && diffInMinutes > 0) {
-                    await alertChannel.send(`⚠️ **SPAwn ALERT:** ${b.icon} **${b.name}** in ~15 mins!`);
+                    await alertChannel.send(`⚠️ **SPAWN ALERT:** ${b.icon} **${b.name}** in ~15 mins!`);
                     b.alerted = true; 
                 }
             }
@@ -68,7 +66,6 @@ async function updateDashboard() {
         const channel = await client.channels.fetch(process.env.DASHBOARD_ID);
         if (!channel) return;
 
-        // Grouping bosses by map
         const groups = {};
         for (const id in bosses) {
             const b = bosses[id];
@@ -84,31 +81,34 @@ async function updateDashboard() {
             const zoneName = groupNames[i];
             const zoneBosses = groups[zoneName];
             
-            // Create ONE embed per Zone to save space
             const eb = new EmbedBuilder()
                 .setTitle(`📍 ${zoneName}`)
-                .setColor("#2b2d31")
+                .setColor(zoneName.includes("ICE") ? "#0099ff" : "#2b2d31")
                 .setTimestamp();
 
-            // Set thumbnail from the first boss in group that has one
-            const thumb = zoneBosses.find(b => b.thumbnail)?.thumbnail;
-            if (thumb) eb.setThumbnail(thumb);
+            // Explicitly finding the thumbnail for the group
+            const groupThumb = zoneBosses.find(b => b.thumbnail)?.thumbnail;
+            if (groupThumb) eb.setThumbnail(groupThumb);
 
             zoneBosses.forEach(b => {
-                let val = "";
+                let statusLine = "";
                 if (b.isFixed) {
-                    val = `\`STATIC SCHEDULE\``;
+                    statusLine = `> 🗓️ **Schedule:** \`24/7 Static\``;
                 } else {
-                    const statusIcon = b.status === "ALIVE" ? "🟢" : "💀";
-                    const nextTime = b.next ? b.next.format('HH:mm') : "--:--";
-                    val = `${statusIcon} **Next:** \`${nextTime}\``;
+                    const sIcon = b.status === "ALIVE" ? "🟢 ALIVE" : "💀 DEAD";
+                    const nextT = b.next ? b.next.format('HH:mm') : "--:--";
+                    let countdown = "";
+                    
                     if (b.status === "DEAD" && b.next) {
-                        const mins = b.next.diff(dayjs(), 'minute');
-                        val += mins > 0 ? `\n*(${mins}m)*` : `\n*(OVERDUE)*`;
+                        const diff = b.next.diff(dayjs(), 'minute');
+                        countdown = diff > 0 ? ` (in ${diff}m)` : ` (**OVERDUE**)`;
                     }
+
+                    statusLine = `> **Status:** ${sIcon}\n> **Next Spawn:** \`${nextT}\`${countdown}`;
                 }
-                // Bosses will try to stay on the same row (3 per row)
-                eb.addFields({ name: `${b.icon} ${b.name}`, value: val, inline: true });
+                
+                // inline: false makes it a clean vertical row
+                eb.addFields({ name: `${b.icon} ${b.name}`, value: statusLine, inline: false });
             });
 
             if (botMsgArray[i]) {
