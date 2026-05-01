@@ -1,12 +1,20 @@
 {
-  "name": "seal-boss-radar",
-  "version": "1.0.0",
-  "main": "index.js",
-  "dependencies": {
-    "discord.js": "^14.13.0",
-    "dayjs": "^1.11.10"
-  },
-  "scripts": {
-    "start": "node index.js"
-  }
+"name": "seal-boss-radar",
+"version": "1.0.1",
+"description": "Boss Tracker for Sovereign",
+"main": "index.js",
+"scripts": {
+"start": "node index.js",
+"postinstall": "echo 'Dependencies installed successfully'"
+},
+"dependencies": {
+"discord.js": "^14.14.1",
+"express": "^4.18.2",
+"body-parser": "^1.20.2",
+"dayjs": "^1.11.10",
+"dotenv": "^16.4.1"
+},
+"engines": {
+"node": ">=18.0.0"
+}
 }
