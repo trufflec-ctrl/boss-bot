@@ -2,9 +2,13 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const dayjs = require('dayjs');
 const duration = require('dayjs/plugin/duration');
 const customParseFormat = require('dayjs/plugin/customParseFormat');
+const utc = require('dayjs/plugin/utc');
+const timezone = require('dayjs/plugin/timezone');
 
 dayjs.extend(customParseFormat);
 dayjs.extend(duration);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const client = new Client({ 
     intents: [
@@ -19,21 +23,21 @@ const client = new Client({
  */
 const bosses = {
     world_boss: { 
-        name: "World Boss", 
-        group: "🛡️ WB Zone (Elim)", 
-        thumbnail: "https://cdn.moogold.com/2024/10/Seal-M.jpg", 
-        icon: "🛰️",
+        name: "Bracelet", 
+        group: "🔮 WB Zone (Elim)", 
+        thumbnail: "https://static.wikia.nocookie.net/sealonline/images/6/66/NobleMadam2.jpg/revision/latest?cb=20140828055744", 
+        icon: "💎",
         isFixed: true,
         fixedTime: "10:00" 
     },
-    pig1: { name: "Sly Pig", aliases: ["Sly Pig"], group: "🐷 Esdelron Lake", icon: "🐷", status: "DEAD", lastKilled: null, next: null },
+    pig1: { name: "Sly Pig", aliases: ["Sly Pig"], group: "🐷 Esdelron Lake", icon: "🐷", thumbnail: "https://monosakarida.wordpress.com/wp-content/uploads/2013/12/babi.jpg?w=300", status: "DEAD", lastKilled: null, next: null },
     pig2: { name: "Violent Pig", aliases: ["Violent Pig"], group: "🐷 Esdelron Lake", icon: "🐷", status: "DEAD", lastKilled: null, next: null },
     pig3: { name: "Swift Pig", aliases: ["Swift Pig"], group: "🐷 Esdelron Lake", icon: "🐷", status: "DEAD", lastKilled: null, next: null },
     pillar: { name: "Pillar", aliases: ["Pillar"], group: "🗿 Southern Poibus", thumbnail: "https://i.imgur.com/VVap6tO.jpg", icon: "🗿", status: "DEAD", lastKilled: null, next: null },
     ice_queen: { name: "Ice Queen", aliases: ["Ice Queen"], group: "🏰 Ice Castle", thumbnail: "https://static.wikia.nocookie.net/sealonline/images/8/89/Ice_Castle.png", icon: "👸", status: "DEAD", lastKilled: null, next: null },
     ice_golem: { name: "Ice Golem", aliases: ["Ice Golem"], group: "🏰 Ice Castle", icon: "🧊", status: "DEAD", lastKilled: null, next: null },
-    ice_sword: { name: "Iceman (S)", aliases: ["Iceman (Sword)"], group: "🏰 Ice Castle", icon: "⚔️", status: "DEAD", lastKilled: null, next: null },
-    ice_shield: { name: "Iceman (SH)", aliases: ["Iceman Shield"], group: "🏰 Ice Castle", icon: "🛡️", status: "DEAD", lastKilled: null, next: null },
+    ice_sword: { name: "Ice Sword", aliases: ["Ice Sword", "Iceman Sword"], group: "🏰 Ice Castle", icon: "⚔️", status: "DEAD", lastKilled: null, next: null },
+    ice_shield: { name: "Ice Shield", aliases: ["Ice Shield", "Iceman Shield"], group: "🏰 Ice Castle", icon: "🛡️", status: "DEAD", lastKilled: null, next: null },
     ohm: { name: "Unstable Ohm", aliases: ["Unstable Ohm"], group: "🧿 Blue Eye", thumbnail: "https://i.ytimg.com/vi/ViT66zjeN9I/maxresdefault.jpg", icon: "🧿", status: "DEAD", lastKilled: null, next: null }
 };
 
@@ -70,15 +74,13 @@ async function updateDashboard() {
                 .setThumbnail(zoneImage)
                 .setColor(zoneName.includes("Ice") ? "#0099ff" : "#2b2d31");
 
-            let descriptionBody = "";
+            let descriptionBody = "```ml\n";
 
             zoneBosses.forEach(b => {
                 if (b.isFixed) {
-                    // Logic to find the NEXT 10:00 AM
-                    const now = dayjs();
-                    let target = dayjs().hour(10).minute(0).second(0);
+                    const now = dayjs().tz("Asia/Jakarta");
+                    let target = dayjs().tz("Asia/Jakarta").hour(10).minute(0).second(0);
                     
-                    // If 10am has already passed today, target 10am tomorrow
                     if (now.isAfter(target)) {
                         target = target.add(1, 'day');
                     }
@@ -87,7 +89,7 @@ async function updateDashboard() {
                     const dur = dayjs.duration(diff);
                     const countdown = `[${Math.floor(dur.asHours())}h ${dur.minutes()}m]`;
 
-                    descriptionBody += `${b.icon} **${b.name}** | NEXT: ${b.fixedTime} ${countdown}\n`;
+                    descriptionBody += `${b.icon} ${b.name.padEnd(12)} | NEXT: ${b.fixedTime} ${countdown}\n`;
                 } else {
                     const statusEmoji = b.status === "ALIVE" ? "🟢" : "💀";
                     const lastT = b.lastKilled ? b.lastKilled.format('HH:mm') : "--:--";
@@ -104,10 +106,11 @@ async function updateDashboard() {
                         }
                     }
                     
-                    descriptionBody += `${statusEmoji} **${b.name}** | L:${lastT} N:${nextT}${timeRemaining}\n`;
+                    descriptionBody += `${statusEmoji} ${b.name.padEnd(12)} | L:${lastT} N:${nextT}${timeRemaining}\n`;
                 }
             });
 
+            descriptionBody += "```";
             eb.setDescription(descriptionBody);
 
             if (botMsgArray[i]) {
