@@ -1,7 +1,12 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const dayjs = require('dayjs');
+const duration = require('dayjs/plugin/duration');
 const customParseFormat = require('dayjs/plugin/customParseFormat');
+const relativeTime = require('dayjs/plugin/relativeTime');
+
 dayjs.extend(customParseFormat);
+dayjs.extend(duration);
+dayjs.extend(relativeTime);
 
 const client = new Client({ 
     intents: [
@@ -86,29 +91,35 @@ async function updateDashboard() {
                 .setColor(zoneName.includes("ICE") ? "#0099ff" : "#2b2d31")
                 .setTimestamp();
 
-            // Find group thumbnail (small 1:1 top-right icon)
             const groupThumb = zoneBosses.find(b => b.thumbnail)?.thumbnail;
             if (groupThumb) eb.setThumbnail(groupThumb);
 
             zoneBosses.forEach(b => {
                 let statusLine = "";
                 if (b.isFixed) {
-                    statusLine = `\`24/7 Static\``;
+                    statusLine = `\`STATIC 24/7\``;
                 } else {
-                    const sIcon = b.status === "ALIVE" ? "🟢" : "💀";
+                    const statusText = b.status === "ALIVE" ? "ALIVE" : "DEAD ";
+                    const lastT = b.lastKilled ? b.lastKilled.format('HH:mm') : "--:--";
                     const nextT = b.next ? b.next.format('HH:mm') : "--:--";
-                    let countdown = "";
                     
+                    let timeRemaining = "";
                     if (b.status === "DEAD" && b.next) {
-                        const diff = b.next.diff(dayjs(), 'minute');
-                        countdown = diff > 0 ? ` (${diff}m)` : ` (!!)`;
+                        const diff = b.next.diff(dayjs());
+                        if (diff > 0) {
+                            const dur = dayjs.duration(diff);
+                            timeRemaining = ` (in ${Math.floor(dur.asHours())}h ${dur.minutes()}m)`;
+                        } else {
+                            timeRemaining = ` (OVERDUE)`;
+                        }
                     }
-                    // Compressed single line for horizontal spacing
-                    statusLine = `${sIcon} **Next:** \`${nextT}\`${countdown}`;
+                    
+                    // Format: | DEAD | LAST: 10:00 NEXT: 22:00 (in 5h 30m)
+                    statusLine = `\`| ${statusText} | LAST: ${lastT} NEXT: ${nextT}${timeRemaining}\``;
                 }
                 
-                // Using inline: true to keep cards side-by-side where possible
-                eb.addFields({ name: `${b.icon} ${b.name}`, value: statusLine, inline: true });
+                // inline: false to make each boss its own wide row
+                eb.addFields({ name: `${b.icon} ${b.name}`, value: statusLine, inline: false });
             });
 
             if (botMsgArray[i]) {
