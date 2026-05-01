@@ -2,26 +2,30 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const dayjs = require('dayjs');
 
 const client = new Client({ 
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent
+    ] 
 });
 
-// Boss Data with fixed locations
+// Boss Data with fixed locations for the "Card" layout
 const bosses = {
-    pig1: { name: "Sly Pig", emoji: "🕵️", group: "🌊 ESDELRON LAKE", map: "Esdelron Lake", status: "DEAD", next: null },
-    pig2: { name: "Violent Pig", emoji: "😡", group: "🌊 ESDELRON LAKE", map: "Esdelron Lake", status: "DEAD", next: null },
-    pig3: { name: "Swift Pig", emoji: "⚡", group: "🌊 ESDELRON LAKE", map: "Esdelron Lake", status: "DEAD", next: null },
-    ice_queen: { name: "Ice Queen", emoji: "👸", group: "❄️ ICE CASTLE", map: "Ice Castle F3", status: "DEAD", next: null },
-    ice_golem: { name: "Ice Golem", emoji: "🗿", group: "❄️ ICE CASTLE", map: "Ice Castle F3", status: "DEAD", next: null },
-    ice_sword: { name: "Iceman (S)", emoji: "⚔️", group: "❄️ ICE CASTLE", map: "Ice Castle F2", status: "DEAD", next: null },
-    ice_shield: { name: "Iceman (H)", emoji: "🛡️", group: "❄️ ICE CASTLE", map: "Ice Castle F1", status: "DEAD", next: null },
-    pillar: { name: "Guardian", emoji: "🏛️", group: "🌵 POIBUS", map: "Southern Poibus", status: "DEAD", next: null },
-    ohm: { name: "Unstable Ohm", emoji: "🌀", group: "🌀 OTHER", map: "Blue Eye", status: "DEAD", next: null }
+    pig1: { name: "Sly Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null },
+    pig2: { name: "Violent Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null },
+    pig3: { name: "Swift Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null },
+    ice_queen: { name: "Ice Queen", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
+    ice_golem: { name: "Ice Golem", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
+    ice_sword: { name: "Iceman (S)", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
+    ice_shield: { name: "Iceman (H)", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
+    pillar: { name: "Guardian", group: "🌵 POIBUS", status: "DEAD", next: null },
+    ohm: { name: "Unstable Ohm", group: "🌀 OTHER", status: "DEAD", next: null }
 };
 
 client.on('clientReady', () => {
     console.log(`Radar Online as ${client.user.tag}`);
-    updateDashboard(); // Run once on startup
-    setInterval(updateDashboard, 60000); // Update every minute
+    updateDashboard(); 
+    setInterval(updateDashboard, 60000); // Pulse every 60s
 });
 
 async function updateDashboard() {
@@ -32,7 +36,8 @@ async function updateDashboard() {
         const embed = new EmbedBuilder()
             .setTitle("🛰️ SOVEREIGN TACTICAL RADAR")
             .setDescription(`>>> **SYSTEM:** ACTIVE\n**LAST SCAN:** <t:${Math.floor(Date.now() / 1000)}:R>`)
-            .setColor("#2b2d31");
+            .setColor("#2b2d31")
+            .setFooter({ text: "Tactical Data Feed v1.0" });
 
         const groups = ["🌊 ESDELRON LAKE", "❄️ ICE CASTLE", "🌵 POIBUS", "🌀 OTHER"];
         
@@ -42,15 +47,24 @@ async function updateDashboard() {
                 const b = bosses[id];
                 if (b.group === groupName) {
                     const statusText = b.status === "ALIVE" ? "UP  " : "DOWN";
-                    const timeText = b.status === "ALIVE" ? b.spawnTime : (b.next ? b.next.format('HH:mm') : "--:--");
-                    fieldContent += `\`${statusText}\` \`${timeText}\` ${b.name}\n`;
+                    const timeText = b.status === "ALIVE" 
+                        ? (b.spawnTime || "--:--") 
+                        : (b.next ? b.next.format('HH:mm') : "--:--");
+                    
+                    // The core of the "Boxy" look:
+                    fieldContent += `[${statusText}] ${timeText} | ${b.name}\n`;
                 }
             }
-            // inline: true creates the box/column effect
-            embed.addFields({ name: groupName, value: `\`\`\`ml\n${fieldContent || "Scanning..."}\`\`\``, inline: true });
+            
+            // inline: true + code block = Card/Box appearance
+            embed.addFields({ 
+                name: groupName, 
+                value: `\`\`\`ml\n${fieldContent || "Scanning..."}\`\`\``, 
+                inline: true 
+            });
         });
 
-        const messages = await channel.messages.fetch({ limit: 10 });
+        const messages = await channel.messages.fetch({ limit: 5 });
         const lastMsg = messages.find(m => m.author.id === client.user.id);
 
         if (lastMsg) {
@@ -59,23 +73,24 @@ async function updateDashboard() {
             await channel.send({ embeds: [embed] });
         }
     } catch (err) {
-        console.error("Dashboard Update Error:", err);
+        console.error("Dashboard Error:", err);
     }
 }
 
 client.on('messageCreate', async (message) => {
-    if (message.author.bot && message.channel.id !== process.env.DASHBOARD_ID) {
-        const content = message.content;
-        for (const id in bosses) {
-            // Check for the boss name in the log
-            if (content.includes(bosses[id].name) || content.includes(id)) {
-                if (content.includes("muncul")) {
-                    bosses[id].status = "ALIVE";
-                    bosses[id].spawnTime = dayjs().format('HH:mm');
-                } else if (content.includes("dikalahkan")) {
-                    bosses[id].status = "DEAD";
-                    bosses[id].next = dayjs().add(12, 'hour');
-                }
+    // Only listen to the source channel (or wherever the logs appear)
+    const content = message.content;
+    
+    for (const id in bosses) {
+        const b = bosses[id];
+        if (content.includes(b.name) || content.toLowerCase().includes(id)) {
+            if (content.includes("muncul")) {
+                b.status = "ALIVE";
+                b.spawnTime = dayjs().format('HH:mm');
+                updateDashboard();
+            } else if (content.includes("dikalahkan")) {
+                b.status = "DEAD";
+                b.next = dayjs().add(12, 'hour');
                 updateDashboard();
             }
         }
