@@ -24,21 +24,32 @@ const client = new Client({
 const bosses = {
     world_boss: { 
         name: "Bracelet", 
-        group: "🔮 WB Zone (Elim)", 
+        group: "💫 WB Zone (Elim)", 
         thumbnail: "https://static.wikia.nocookie.net/sealonline/images/6/66/NobleMadam2.jpg/revision/latest?cb=20140828055744", 
         icon: "💎",
         isFixed: true,
         fixedTime: "10:00" 
     },
-    pig1: { name: "Sly Pig", aliases: ["Sly Pig"], group: "🐷 Esdelron Lake", icon: "🐷", thumbnail: "https://monosakarida.wordpress.com/wp-content/uploads/2013/12/babi.jpg?w=300", status: "DEAD", lastKilled: null, next: null },
-    pig2: { name: "Violent Pig", aliases: ["Violent Pig"], group: "🐷 Esdelron Lake", icon: "🐷", status: "DEAD", lastKilled: null, next: null },
-    pig3: { name: "Swift Pig", aliases: ["Swift Pig"], group: "🐷 Esdelron Lake", icon: "🐷", status: "DEAD", lastKilled: null, next: null },
-    pillar: { name: "Pillar", aliases: ["Pillar"], group: "🗿 Southern Poibus", thumbnail: "https://i.imgur.com/VVap6tO.jpg", icon: "🗿", status: "DEAD", lastKilled: null, next: null },
+    pig1: { name: "1st Pig", aliases: ["Sly Pig"], group: "🐷 Esdelron Lake", icon: "🐷", thumbnail: "https://monosakarida.wordpress.com/wp-content/uploads/2013/12/babi.jpg?w=300", status: "DEAD", lastKilled: null, next: null },
+    pig2: { name: "2nd Pig", aliases: ["Violent Pig"], group: "🐷 Esdelron Lake", icon: "🐷", status: "DEAD", lastKilled: null, next: null },
+    pig3: { name: "3rd Pig", aliases: ["Swift Pig"], group: "🐷 Esdelron Lake", icon: "🐷", status: "DEAD", lastKilled: null, next: null },
+    pillar: { 
+        name: "Pillar", 
+        aliases: ["Pillar"], 
+        group: "🗿 Southern Poibus", 
+        thumbnail: "https://i.imgur.com/VVap6tO.jpg", 
+        icon: "🗿", 
+        status: "DEAD", 
+        lastKilled: null, 
+        isWindow: true, // Special flag for Pillar
+        windowMin: 10,  // 10 hours min
+        windowMax: 12   // 12 hours max
+    },
     ice_queen: { name: "Ice Queen", aliases: ["Ice Queen"], group: "🏰 Ice Castle", thumbnail: "https://static.wikia.nocookie.net/sealonline/images/8/89/Ice_Castle.png", icon: "👸", status: "DEAD", lastKilled: null, next: null },
     ice_golem: { name: "Ice Golem", aliases: ["Ice Golem"], group: "🏰 Ice Castle", icon: "🧊", status: "DEAD", lastKilled: null, next: null },
-    ice_sword: { name: "Ice Sword", aliases: ["Ice Sword", "Iceman Sword"], group: "🏰 Ice Castle", icon: "⚔️", status: "DEAD", lastKilled: null, next: null },
-    ice_shield: { name: "Ice Shield", aliases: ["Ice Shield", "Iceman Shield"], group: "🏰 Ice Castle", icon: "🛡️", status: "DEAD", lastKilled: null, next: null },
-    ohm: { name: "Unstable Ohm", aliases: ["Unstable Ohm"], group: "🧿 Blue Eye", thumbnail: "https://i.ytimg.com/vi/ViT66zjeN9I/maxresdefault.jpg", icon: "🧿", status: "DEAD", lastKilled: null, next: null }
+    ice_sword: { name: "Ice Sword", aliases: ["Ice Sword"], group: "🏰 Ice Castle", icon: "⚔️", status: "DEAD", lastKilled: null, next: null },
+    ice_shield: { name: "Ice Shield", aliases: ["Ice Shield"], group: "🏰 Ice Castle", icon: "🛡️", status: "DEAD", lastKilled: null, next: null },
+    ohm: { name: "U. Ohm", aliases: ["Unstable Ohm"], group: "🧿 Blue Eye", thumbnail: "https://i.ytimg.com/vi/ViT66zjeN9I/maxresdefault.jpg", icon: "🧿", status: "DEAD", lastKilled: null, next: null }
 };
 
 client.on('ready', () => {
@@ -66,7 +77,6 @@ async function updateDashboard() {
         for (let i = 0; i < groupNames.length; i++) {
             const zoneName = groupNames[i];
             const zoneBosses = groups[zoneName];
-            
             const zoneImage = zoneBosses.find(b => b.thumbnail)?.thumbnail || "https://i.imgur.com/8Qz5QnB.png";
             
             const eb = new EmbedBuilder()
@@ -77,36 +87,48 @@ async function updateDashboard() {
             let descriptionBody = "```ml\n";
 
             zoneBosses.forEach(b => {
+                const now = dayjs().tz("Asia/Jakarta");
+
                 if (b.isFixed) {
-                    const now = dayjs().tz("Asia/Jakarta");
                     let target = dayjs().tz("Asia/Jakarta").hour(10).minute(0).second(0);
+                    if (now.isAfter(target)) target = target.add(1, 'day');
+                    const dur = dayjs.duration(target.diff(now));
+                    descriptionBody += `${b.icon} ${b.name.padEnd(10)} | ⏰ ${b.fixedTime} (in ${Math.floor(dur.asHours())}h ${dur.minutes()}m)\n`;
+                } 
+                else if (b.isWindow && b.lastKilled) {
+                    const winStart = b.lastKilled.add(b.windowMin, 'hour');
+                    const winEnd = b.lastKilled.add(b.windowMax, 'hour');
+                    const statusEmoji = now.isAfter(winStart) ? "🟡" : "💀";
                     
-                    if (now.isAfter(target)) {
-                        target = target.add(1, 'day');
+                    const timeRange = `${winStart.format('HH:mm')}-${winEnd.format('HH:mm')}`;
+                    let countdown = "";
+                    
+                    if (now.isBefore(winStart)) {
+                        const dur = dayjs.duration(winStart.diff(now));
+                        countdown = ` (in ${Math.floor(dur.asHours())}h ${dur.minutes()}m)`;
+                    } else if (now.isBefore(winEnd)) {
+                        countdown = ` (WINDOW)`;
+                    } else {
+                        countdown = ` (READY)`;
                     }
 
-                    const diff = target.diff(now);
-                    const dur = dayjs.duration(diff);
-                    const countdown = `[${Math.floor(dur.asHours())}h ${dur.minutes()}m]`;
-
-                    descriptionBody += `${b.icon} ${b.name.padEnd(12)} | NEXT: ${b.fixedTime} ${countdown}\n`;
-                } else {
+                    descriptionBody += `${statusEmoji} ${b.name.padEnd(10)} | ⏰ ${timeRange}${countdown}\n`;
+                }
+                else {
                     const statusEmoji = b.status === "ALIVE" ? "🟢" : "💀";
-                    const lastT = b.lastKilled ? b.lastKilled.format('HH:mm') : "--:--";
                     const nextT = b.next ? b.next.format('HH:mm') : "--:--";
+                    let timeInfo = `⏰ ${nextT}`;
                     
-                    let timeRemaining = "";
                     if (b.status === "DEAD" && b.next) {
-                        const diff = b.next.diff(dayjs());
+                        const diff = b.next.diff(now);
                         if (diff > 0) {
                             const dur = dayjs.duration(diff);
-                            timeRemaining = ` [${Math.floor(dur.asHours())}h ${dur.minutes()}m]`;
+                            timeInfo += ` (in ${Math.floor(dur.asHours())}h ${dur.minutes()}m)`;
                         } else {
-                            timeRemaining = ` [READY]`;
+                            timeInfo += ` (READY)`;
                         }
                     }
-                    
-                    descriptionBody += `${statusEmoji} ${b.name.padEnd(12)} | L:${lastT} N:${nextT}${timeRemaining}\n`;
+                    descriptionBody += `${statusEmoji} ${b.name.padEnd(10)} | ${timeInfo}\n`;
                 }
             });
 
