@@ -13,29 +13,30 @@ const client = new Client({
 
 /**
  * BOSS DATABASE
- * Updated with your specific Map URLs.
+ * group: Used for categorization
+ * thumbnail: Small image in top right
  */
 const bosses = {
     world_boss: { 
         name: "World Boss", 
         group: "🛰️ GLOBAL OPERATIONS", 
-        banner: "https://cdn.moogold.com/2024/10/Seal-M.jpg", 
+        thumbnail: "https://cdn.moogold.com/2024/10/Seal-M.jpg", 
         icon: "🛡️",
         isFixed: true 
     },
-    pig1: { name: "Sly Pig", aliases: ["Sly Pig"], group: "ESDELRON LAKE", banner: "https://static.wikia.nocookie.net/sealonline/images/f/f3/Three_Piglets_Raid.jpg", icon: "🐷", status: "DEAD", lastKilled: null, next: null, alerted: false },
+    pig1: { name: "Sly Pig", aliases: ["Sly Pig"], group: "ESDELRON LAKE", thumbnail: "https://static.wikia.nocookie.net/sealonline/images/f/f3/Three_Piglets_Raid.jpg", icon: "🐷", status: "DEAD", lastKilled: null, next: null, alerted: false },
     pig2: { name: "Violent Pig", aliases: ["Violent Pig"], group: "ESDELRON LAKE", icon: "🐷", status: "DEAD", lastKilled: null, next: null, alerted: false },
     pig3: { name: "Swift Pig", aliases: ["Swift Pig"], group: "ESDELRON LAKE", icon: "🐷", status: "DEAD", lastKilled: null, next: null, alerted: false },
-    pillar: { name: "Pillar", aliases: ["Pillar"], group: "SOUTHERN POIBUS", banner: "https://i.imgur.com/VVap6tO.jpg", icon: "🗿", status: "DEAD", lastKilled: null, next: null, alerted: false },
-    ice_queen: { name: "Ice Queen", aliases: ["Ice Queen"], group: "ICE CASTLE", banner: "https://static.wikia.nocookie.net/sealonline/images/b/b3/Ice_Castle.png", icon: "👸", status: "DEAD", lastKilled: null, next: null, alerted: false },
+    pillar: { name: "Pillar", aliases: ["Pillar"], group: "SOUTHERN POIBUS", thumbnail: "https://i.imgur.com/VVap6tO.jpg", icon: "🗿", status: "DEAD", lastKilled: null, next: null, alerted: false },
+    ice_queen: { name: "Ice Queen", aliases: ["Ice Queen"], group: "ICE CASTLE", thumbnail: "https://static.wikia.nocookie.net/sealonline/images/b/b3/Ice_Castle.png", icon: "👸", status: "DEAD", lastKilled: null, next: null, alerted: false },
     ice_golem: { name: "Ice Golem", aliases: ["Ice Golem"], group: "ICE CASTLE", icon: "🧊", status: "DEAD", lastKilled: null, next: null, alerted: false },
     ice_sword: { name: "Iceman (S)", aliases: ["Iceman (Sword)"], group: "ICE CASTLE", icon: "⚔️", status: "DEAD", lastKilled: null, next: null, alerted: false },
     ice_shield: { name: "Iceman (Shield)", aliases: ["Iceman Shield"], group: "ICE CASTLE", icon: "🛡️", status: "DEAD", lastKilled: null, next: null, alerted: false },
-    ohm: { name: "Unstable Ohm", aliases: ["Unstable Ohm"], group: "BLUE EYE", banner: "https://i.ytimg.com/vi/ViT66zjeN9I/maxresdefault.jpg", icon: "🧿", status: "DEAD", lastKilled: null, next: null, alerted: false }
+    ohm: { name: "Unstable Ohm", aliases: ["Unstable Ohm"], group: "BLUE EYE", thumbnail: "https://i.ytimg.com/vi/ViT66zjeN9I/maxresdefault.jpg", icon: "🧿", status: "DEAD", lastKilled: null, next: null, alerted: false }
 };
 
 client.on('ready', () => {
-    console.log(`Tactical Radar Online: ${client.user.tag}`);
+    console.log(`Radar Online: ${client.user.tag}`);
     updateDashboard(); 
     setInterval(() => {
         updateDashboard();
@@ -54,12 +55,12 @@ async function checkAlerts() {
             if (!b.isFixed && b.status === "DEAD" && b.next && !b.alerted) {
                 const diffInMinutes = b.next.diff(now, 'minute');
                 if (diffInMinutes <= 15 && diffInMinutes > 0) {
-                    await alertChannel.send(`⚠️ **PREPARING SPAWN:** ${b.icon} **${b.name}** in ~15 mins!`);
+                    await alertChannel.send(`⚠️ **SPAwn ALERT:** ${b.icon} **${b.name}** in ~15 mins!`);
                     b.alerted = true; 
                 }
             }
         }
-    } catch (e) { console.error("Alert logic error:", e); }
+    } catch (e) { console.error("Alert error:", e); }
 }
 
 async function updateDashboard() {
@@ -67,6 +68,7 @@ async function updateDashboard() {
         const channel = await client.channels.fetch(process.env.DASHBOARD_ID);
         if (!channel) return;
 
+        // Grouping bosses by map
         const groups = {};
         for (const id in bosses) {
             const b = bosses[id];
@@ -74,7 +76,7 @@ async function updateDashboard() {
             groups[b.group].push(b);
         }
 
-        const messages = await channel.messages.fetch({ limit: 15 });
+        const messages = await channel.messages.fetch({ limit: 10 });
         const botMsgArray = Array.from(messages.filter(m => m.author.id === client.user.id).values()).reverse();
         const groupNames = Object.keys(groups);
         
@@ -82,42 +84,37 @@ async function updateDashboard() {
             const zoneName = groupNames[i];
             const zoneBosses = groups[zoneName];
             
-            const embeds = zoneBosses.map((b, index) => {
-                let statusText = "";
-                if (b.isFixed) {
-                    statusText = `\`[STATIC] | SCHEDULED\``;
-                } else {
-                    const statusLabel = b.status === "ALIVE" ? "🟢 ALIVE" : "💀 DEAD ";
-                    const last = b.lastKilled ? b.lastKilled.format('HH:mm') : "--:--";
-                    const expected = b.status === "ALIVE" ? " --:-- " : (b.next ? b.next.format('HH:mm') : "--:--");
-                    let countdown = "";
-                    
-                    if (b.status === "DEAD" && b.next) {
-                        const diffH = b.next.diff(dayjs(), 'hour');
-                        const diffM = b.next.diff(dayjs(), 'minute') % 60;
-                        countdown = (diffH >= 0) ? `\n*(Spawn in ${diffH}h ${diffM}m)*` : `\n*(Overdue!)*`;
-                    }
-                    statusText = `**Status:** ${statusLabel}\n**Last:** \`${last}\` | **Next:** \`${expected}\` ${countdown}`;
-                }
+            // Create ONE embed per Zone to save space
+            const eb = new EmbedBuilder()
+                .setTitle(`📍 ${zoneName}`)
+                .setColor("#2b2d31")
+                .setTimestamp();
 
-                const eb = new EmbedBuilder()
-                    .setColor(b.status === "ALIVE" ? "#2ecc71" : "#2b2d31")
-                    .setTitle(`${b.icon} ${b.name}`)
-                    .setDescription(statusText);
-                
-                // If this is the first boss in the group, set the Zone Banner
-                if (b.banner) {
-                    eb.setImage(b.banner);
-                    eb.setAuthor({ name: `📍 ${zoneName}` });
+            // Set thumbnail from the first boss in group that has one
+            const thumb = zoneBosses.find(b => b.thumbnail)?.thumbnail;
+            if (thumb) eb.setThumbnail(thumb);
+
+            zoneBosses.forEach(b => {
+                let val = "";
+                if (b.isFixed) {
+                    val = `\`STATIC SCHEDULE\``;
+                } else {
+                    const statusIcon = b.status === "ALIVE" ? "🟢" : "💀";
+                    const nextTime = b.next ? b.next.format('HH:mm') : "--:--";
+                    val = `${statusIcon} **Next:** \`${nextTime}\``;
+                    if (b.status === "DEAD" && b.next) {
+                        const mins = b.next.diff(dayjs(), 'minute');
+                        val += mins > 0 ? `\n*(${mins}m)*` : `\n*(OVERDUE)*`;
+                    }
                 }
-                
-                return eb;
+                // Bosses will try to stay on the same row (3 per row)
+                eb.addFields({ name: `${b.icon} ${b.name}`, value: val, inline: true });
             });
 
             if (botMsgArray[i]) {
-                await botMsgArray[i].edit({ embeds });
+                await botMsgArray[i].edit({ embeds: [eb] });
             } else {
-                await channel.send({ embeds });
+                await channel.send({ embeds: [eb] });
             }
         }
     } catch (err) {
@@ -139,7 +136,6 @@ client.on('messageCreate', async (message) => {
         if (matchesAlias) {
             if (content.includes("muncul")) {
                 b.status = "ALIVE";
-                b.lastKilled = null;
                 b.alerted = false;
                 updateDashboard();
             } else if (content.includes("dikalahkan")) {
