@@ -94,11 +94,13 @@ async function updateDashboard() {
             const groupThumb = zoneBosses.find(b => b.thumbnail)?.thumbnail;
             if (groupThumb) eb.setThumbnail(groupThumb);
 
+            let descriptionBody = "";
+
             zoneBosses.forEach(b => {
-                let statusLine = "";
                 if (b.isFixed) {
-                    statusLine = `\`STATIC 24/7\``;
+                    descriptionBody += `${b.icon} **${b.name}** \`STATIC 24/7\`\n`;
                 } else {
+                    const statusEmoji = b.status === "ALIVE" ? "🟢" : "💀";
                     const statusText = b.status === "ALIVE" ? "ALIVE" : "DEAD ";
                     const lastT = b.lastKilled ? b.lastKilled.format('HH:mm') : "--:--";
                     const nextT = b.next ? b.next.format('HH:mm') : "--:--";
@@ -114,13 +116,12 @@ async function updateDashboard() {
                         }
                     }
                     
-                    // Format: | DEAD | LAST: 10:00 NEXT: 22:00 (in 5h 30m)
-                    statusLine = `\`| ${statusText} | LAST: ${lastT} NEXT: ${nextT}${timeRemaining}\``;
+                    // This puts Name and Details on the same line
+                    descriptionBody += `${b.icon} **${b.name}**\n\`| ${statusEmoji} ${statusText} | LAST: ${lastT} NEXT: ${nextT}${timeRemaining}\`\n\n`;
                 }
-                
-                // inline: false to make each boss its own wide row
-                eb.addFields({ name: `${b.icon} ${b.name}`, value: statusLine, inline: false });
             });
+
+            eb.setDescription(descriptionBody);
 
             if (botMsgArray[i]) {
                 await botMsgArray[i].edit({ embeds: [eb] });
