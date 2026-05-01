@@ -1,0 +1,12 @@
+{
+  "name": "seal-boss-radar",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^14.13.0",
+    "dayjs": "^1.11.10"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}
