@@ -3,10 +3,10 @@ async function updateDashboard() {
     if (!channel) return;
 
     const embed = new EmbedBuilder()
-        .setTitle("🛰️ SOVEREIGN BOSS RADAR")
-        .setDescription(`**Last System Ping:** <t:${Math.floor(Date.now() / 1000)}:R>\n*All timers are based on a 12h rotation.*`)
-        .setColor("#2b2d31") // Sleek dark grey
-        .setThumbnail("https://i.imgur.com/83p1D7A.png"); // Optional: Add a cool icon URL here
+        .setAuthor({ name: "SOVEREIGN TACTICAL RADAR", iconURL: "https://i.imgur.com/83p1D7A.png" })
+        .setColor("#2b2d31")
+        .setDescription(`>>> **SYSTEM STATUS:** ONLINE\n**LAST SCAN:** <t:${Math.floor(Date.now() / 1000)}:R>`)
+        .setTimestamp();
 
     const groups = ["🌊 ESDELRON LAKE", "❄️ ICE CASTLE", "🌵 POIBUS", "🌀 OTHER MAPS"];
     
@@ -15,16 +15,22 @@ async function updateDashboard() {
         for (const id in bosses) {
             const b = bosses[id];
             if (b.group === groupName) {
-                const statusEmoji = b.status === "ALIVE" ? "🟢" : "🔴";
-                const timeInfo = b.status === "ALIVE" 
-                    ? `LIVE since ${b.spawnTime}` 
-                    : `ETA: ${b.next ? b.next.format('HH:mm') : '--:--'}`;
+                // Creates a boxy [ STATUS ] [ TIME ] Name format
+                const statusLabel = b.status === "ALIVE" ? "UP  " : "DOWN";
+                const timeLabel = b.status === "ALIVE" 
+                    ? b.spawnTime 
+                    : (b.next ? b.next.format('HH:mm') : "--:--");
                 
-                // Using a code-block style for a "Terminal" look
-                fieldContent += `${statusEmoji} \`${timeInfo}\` **${b.name}**\n`;
+                fieldContent += `\`${statusLabel}\` \`${timeLabel}\` **${b.name}**\n`;
             }
         }
-        embed.addFields({ name: `\n${groupName}`, value: fieldContent || "📡 *Scanning...*", inline: false });
+        
+        // inline: true makes them look like boxes/cards
+        embed.addFields({ 
+            name: `──────────────\n${groupName}`, 
+            value: fieldContent || "📡 *Scanning...*", 
+            inline: true 
+        });
     });
 
     const messages = await channel.messages.fetch({ limit: 10 });
