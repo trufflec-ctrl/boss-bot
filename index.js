@@ -11,22 +11,48 @@ const client = new Client({
 
 // Boss Data with fixed locations for the "Card" layout
 const bosses = {
-    pig1: { name: "Sly Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null },
-    pig2: { name: "Violent Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null },
-    pig3: { name: "Swift Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null },
-    ice_queen: { name: "Ice Queen", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
-    ice_golem: { name: "Ice Golem", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
-    ice_sword: { name: "Iceman (S)", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
-    ice_shield: { name: "Iceman (H)", group: "❄️ ICE CASTLE", status: "DEAD", next: null },
-    pillar: { name: "Guardian", group: "🌵 POIBUS", status: "DEAD", next: null },
-    ohm: { name: "Unstable Ohm", group: "🌀 OTHER", status: "DEAD", next: null }
+    pig1: { name: "Sly Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null, alerted: false },
+    pig2: { name: "Violent Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null, alerted: false },
+    pig3: { name: "Swift Pig", group: "🌊 ESDELRON LAKE", status: "DEAD", next: null, alerted: false },
+    ice_queen: { name: "Ice Queen", group: "❄️ ICE CASTLE", status: "DEAD", next: null, alerted: false },
+    ice_golem: { name: "Ice Golem", group: "❄️ ICE CASTLE", status: "DEAD", next: null, alerted: false },
+    ice_sword: { name: "Iceman (S)", group: "❄️ ICE CASTLE", status: "DEAD", next: null, alerted: false },
+    ice_shield: { name: "Iceman (H)", group: "❄️ ICE CASTLE", status: "DEAD", next: null, alerted: false },
+    pillar: { name: "Guardian", group: "🌵 POIBUS", status: "DEAD", next: null, alerted: false },
+    ohm: { name: "Unstable Ohm", group: "🌀 OTHER", status: "DEAD", next: null, alerted: false }
 };
 
 client.on('clientReady', () => {
     console.log(`Radar Online as ${client.user.tag}`);
     updateDashboard(); 
-    setInterval(updateDashboard, 60000); // Pulse every 60s
+    
+    // Pulse every 60s for dashboard and alert checks
+    setInterval(() => {
+        updateDashboard();
+        checkAlerts();
+    }, 60000); 
 });
+
+// New Function: Checks if any boss is spawning in 15 minutes
+async function checkAlerts() {
+    const alertChannel = await client.channels.fetch(process.env.ALERT_CHANNEL_ID || process.env.DASHBOARD_ID);
+    if (!alertChannel) return;
+
+    const now = dayjs();
+    
+    for (const id in bosses) {
+        const b = bosses[id];
+        if (b.status === "DEAD" && b.next && !b.alerted) {
+            const diffInMinutes = b.next.diff(now, 'minute');
+            
+            // Alert if spawn is within 15 minutes
+            if (diffInMinutes <= 15 && diffInMinutes > 0) {
+                await alertChannel.send(`⚠️ **TACTICAL ALERT:** ${b.name} spawning in ~15 minutes at ${b.group}! Prepare for intercept.`);
+                b.alerted = true; // Mark alerted so it doesn't spam every minute
+            }
+        }
+    }
+}
 
 async function updateDashboard() {
     try {
@@ -51,12 +77,10 @@ async function updateDashboard() {
                         ? (b.spawnTime || "--:--") 
                         : (b.next ? b.next.format('HH:mm') : "--:--");
                     
-                    // The core of the "Boxy" look:
                     fieldContent += `[${statusText}] ${timeText} | ${b.name}\n`;
                 }
             }
             
-            // inline: true + code block = Card/Box appearance
             embed.addFields({ 
                 name: groupName, 
                 value: `\`\`\`ml\n${fieldContent || "Scanning..."}\`\`\``, 
@@ -78,19 +102,23 @@ async function updateDashboard() {
 }
 
 client.on('messageCreate', async (message) => {
-    // Only listen to the source channel (or wherever the logs appear)
+    // Check if message is from the authorized log channel
+    if (message.channel.id !== process.env.LOG_SOURCE_ID) return;
+
     const content = message.content;
     
     for (const id in bosses) {
         const b = bosses[id];
-        if (content.includes(b.name) || content.toLowerCase().includes(id)) {
+        if (content.includes(b.name)) {
             if (content.includes("muncul")) {
                 b.status = "ALIVE";
                 b.spawnTime = dayjs().format('HH:mm');
+                b.alerted = false; // Reset alert status for next death cycle
                 updateDashboard();
             } else if (content.includes("dikalahkan")) {
                 b.status = "DEAD";
                 b.next = dayjs().add(12, 'hour');
+                b.alerted = false; // Prepare for new spawn alert
                 updateDashboard();
             }
         }
