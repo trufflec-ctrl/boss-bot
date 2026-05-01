@@ -26,9 +26,9 @@ const bosses = {
     pig2: { name: "Violent Pig", aliases: ["Violent Pig"], group: "ESDELRON LAKE", icon: "🐷", status: "DEAD", lastKilled: null, next: null, alerted: false },
     pig3: { name: "Swift Pig", aliases: ["Swift Pig"], group: "ESDELRON LAKE", icon: "🐷", status: "DEAD", lastKilled: null, next: null, alerted: false },
     pillar: { name: "Pillar", aliases: ["Pillar"], group: "SOUTHERN POIBUS", thumbnail: "https://i.imgur.com/VVap6tO.jpg", icon: "🗿", status: "DEAD", lastKilled: null, next: null, alerted: false },
-    ice_queen: { name: "Ice Queen", aliases: ["Ice Queen"], group: "ICE CASTLE", thumbnail: "https://static.wikia.nocookie.net/sealonline/images/b/b3/Ice_Castle.png", icon: "👸", status: "DEAD", lastKilled: null, next: null, alerted: false },
+    ice_queen: { name: "Ice Queen", aliases: ["Ice Queen"], group: "ICE CASTLE", thumbnail: "https://static.wikia.nocookie.net/sealonline/images/8/89/Ice_Castle.png", icon: "👸", status: "DEAD", lastKilled: null, next: null, alerted: false },
     ice_golem: { name: "Ice Golem", aliases: ["Ice Golem"], group: "ICE CASTLE", icon: "🧊", status: "DEAD", lastKilled: null, next: null, alerted: false },
-    ice_sword: { name: "Iceman (S)", aliases: ["Iceman (Sword)"], group: "ICE CASTLE", icon: "⚔️", status: "DEAD", lastKilled: null, next: null, alerted: false },
+    ice_sword: { name: "Iceman (Sword)", aliases: ["Iceman (Sword)"], group: "ICE CASTLE", icon: "⚔️", status: "DEAD", lastKilled: null, next: null, alerted: false },
     ice_shield: { name: "Iceman (Shield)", aliases: ["Iceman Shield"], group: "ICE CASTLE", icon: "🛡️", status: "DEAD", lastKilled: null, next: null, alerted: false },
     ohm: { name: "Unstable Ohm", aliases: ["Unstable Ohm"], group: "BLUE EYE", thumbnail: "https://i.ytimg.com/vi/ViT66zjeN9I/maxresdefault.jpg", icon: "🧿", status: "DEAD", lastKilled: null, next: null, alerted: false }
 };
@@ -86,29 +86,29 @@ async function updateDashboard() {
                 .setColor(zoneName.includes("ICE") ? "#0099ff" : "#2b2d31")
                 .setTimestamp();
 
-            // Explicitly finding the thumbnail for the group
+            // Find group thumbnail (small 1:1 top-right icon)
             const groupThumb = zoneBosses.find(b => b.thumbnail)?.thumbnail;
             if (groupThumb) eb.setThumbnail(groupThumb);
 
             zoneBosses.forEach(b => {
                 let statusLine = "";
                 if (b.isFixed) {
-                    statusLine = `> 🗓️ **Schedule:** \`24/7 Static\``;
+                    statusLine = `\`24/7 Static\``;
                 } else {
-                    const sIcon = b.status === "ALIVE" ? "🟢 ALIVE" : "💀 DEAD";
+                    const sIcon = b.status === "ALIVE" ? "🟢" : "💀";
                     const nextT = b.next ? b.next.format('HH:mm') : "--:--";
                     let countdown = "";
                     
                     if (b.status === "DEAD" && b.next) {
                         const diff = b.next.diff(dayjs(), 'minute');
-                        countdown = diff > 0 ? ` (in ${diff}m)` : ` (**OVERDUE**)`;
+                        countdown = diff > 0 ? ` (${diff}m)` : ` (!!)`;
                     }
-
-                    statusLine = `> **Status:** ${sIcon}\n> **Next Spawn:** \`${nextT}\`${countdown}`;
+                    // Compressed single line for horizontal spacing
+                    statusLine = `${sIcon} **Next:** \`${nextT}\`${countdown}`;
                 }
                 
-                // inline: false makes it a clean vertical row
-                eb.addFields({ name: `${b.icon} ${b.name}`, value: statusLine, inline: false });
+                // Using inline: true to keep cards side-by-side where possible
+                eb.addFields({ name: `${b.icon} ${b.name}`, value: statusLine, inline: true });
             });
 
             if (botMsgArray[i]) {
